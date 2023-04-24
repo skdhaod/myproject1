@@ -21,8 +21,11 @@ int main(int argc, char* argv[]){
     if(argv[1]==NULL){
         find_cur();
     }
+    else if(!strcmp(argv[1],"*.")){
+        find_dir();
+    }
     else{
-        find_target(argv);
+        find_target(argc, argv);
     }
 
     return 0;

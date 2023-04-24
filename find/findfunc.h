@@ -32,12 +32,14 @@
 #endif
 */
 
+enum wildcard_loca{NONE=0, EXIST_FN, EXIST_EX, EXIST_BOTH};
 
 void volume_info();//볼륨 정보
 
 void find_cur();//현재 디렉토리 find
+void find_dir();//모든 디렉터리 출력
 
-void find_target(char *argv[]);//타겟 find
+void find_target(int argc, char *argv[]);//타겟 find
 void find_target_dir(char *argv[]);//dir find
 void find_target_file(char *argv[]);//file find
 
