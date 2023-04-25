@@ -37,11 +37,17 @@ enum wildcard_loca{NONE=0, EXIST_FN, EXIST_EX, EXIST_BOTH};
 void volume_info();//볼륨 정보
 
 void find_cur();//현재 디렉토리 find
-void find_dir();//모든 디렉터리 출력
 
 void find_target(int argc, char *argv[]);//타겟 find
 void find_target_dir(char *argv[]);//dir find
 void find_target_file(char *argv[]);//file find
+
+void find_none_extension(char *argv[]);
+
+int is_same_wildcard_str(char argv[], char str[]);//와일드카드 포함 문자열이 일치하는가?
+int charcmp(char argv, char str);//문자가 일치하는가?
+int is_last_str(char str1[], char str2[]);//str2가 str1의 마지막 문자열이 맞는가?
+
 
 int is_file_or_dir(char *filename); //dir인지 file인지 구분
 char* get_time(struct tm *t); //시간 받아오기

@@ -7,8 +7,9 @@
 
     *.*했을때 디렉터리도 나와야함(파일만 나옴)
 
-    *.했을때 디렉들 다 나와야함 //함수 만들면 됨. 이유 : argv에 *.이게 그대로 들어가버림
-        이거 문제점 : *.이건 되는데 f*.같이 *.이랑 다른 문자가 섞이면 출력 못 함
+    *.했을때 확장자가 없는 파일들 나와야함 //함수 만들면 됨. 이유 : argv에 *.이게 그대로 들어가버림 <-만드는중
+
+    문제: .이 제일 뒤에 있으면 그냥 확장자가 없다는 뜻인데 뭔 말인지 못알아먹는듯 argv를 어떻게 고쳐야하나?
 */
 
 void volume_info(){
@@ -70,41 +71,6 @@ void find_cur(){
     closedir(dp);
 }
 
-void find_dir(){
-    struct dirent *de;
-    DIR *dp;
-    ULARGE_INTEGER free_memory;//엄청 큰 크기 측정하려고 있는 구조체
-    memset(&free_memory, 0, sizeof(free_memory));//메모리 0으로 초기화
-    struct _stat buf;//현재 파일 정보 받아오는 구조체
-    char pathname[100]; //경로 이름
-    int dircnt=0;//폴더 개수0
-    __int64 fs;//filesize
-    char strnum[20]; //임시로 숫자에 콤마 추가할 스트링
-
-    dp=opendir(".");
-    de=readdir(dp);
-
-
-    printf("\n %s 디렉터리\n\n", getcwd(pathname, 100));
-
-    do{
-        _stat(de->d_name, &buf);
-
-        if (de->d_type == DT_DIR){//폴더면  dir출력함
-            printf("%s", get_time(localtime(&buf.st_mtime)));
-            printf("<DIR>\t\t %s\n", de->d_name);
-            dircnt++;
-        }
-    }while ((de = readdir(dp)) != NULL);
-
-    GetDiskFreeSpaceEx(pathname, NULL, NULL, &free_memory); //디스크 용량 정보 받기
-    printf("\t%8d개 파일\t%19d 바이트\n", 0, 0);
-    add_comma((LONGLONG)free_memory.QuadPart, strnum);
-    printf("\t%8d개 디렉터리 %16s 바이트 남음\n", dircnt, strnum);
-    closedir(dp);
-
-}
-
 void find_target(int argc, char* argv[]){
     struct dirent *de;
     DIR *dp;
@@ -124,9 +90,12 @@ void find_target(int argc, char* argv[]){
     dp=opendir(".");
     de = readdir(dp);
 
-    //파일이나 폴더의 경로출력
-    if(de->d_type == DT_DIR && argc==2){
+    if(de->d_type == DT_DIR && argc==2){ //특수한 경우 걸러내기
         find_target_dir(argv);//폴더 하나만 검색했다면 하위폴더 탐색으로 넘어가기
+        return;
+    }
+    else if(is_last_str(argv[1],".")){
+        find_none_extension(argv); //.으로 끝나면 확장자가 없는 파일을 탐색해야함
         return;
     }
 
@@ -168,7 +137,6 @@ void find_target(int argc, char* argv[]){
 
     closedir(dp);
 }
-
 
 void find_target_dir(char *argv[]){ //하위 디렉 탐색
 
@@ -220,6 +188,104 @@ void find_target_dir(char *argv[]){ //하위 디렉 탐색
     printf("\t%8d개 디렉터리 %16s 바이트 남음\n", dircnt, strnum);
     closedir(dp);
 }
+
+void find_none_extension(char *argv[]){//확장자가 없는(*. 로 끝나는) 파일 탐색
+    struct dirent *de;
+    DIR *dp;
+    ULARGE_INTEGER free_memory;//엄청 큰 크기 측정하려고 있는 구조체
+    memset(&free_memory, 0, sizeof(free_memory));//메모리 0으로 초기화
+    struct _stat buf;//현재 파일 정보 받아오는 구조체, 시간 받아올거임
+    char pathname[100]; //경로 이름
+    int filecnt=0;//파일 개수
+    int dircnt=0;//폴더 개수
+    __int64 filesum=0;//파일 크기 합계
+    __int64 fs;//filesize
+    char strnum[20]; //임시로 숫자에 콤마 추가할 스트링
+
+    dp=opendir(".");
+    de=readdir(dp);
+
+
+    printf("\n %s 디렉터리\n\n", getcwd(pathname, 100));
+
+
+    do{
+        _stat(de->d_name, &buf);
+        if(is_same_wildcard_str(argv[1], de->d_name)){
+            printf("%s", get_time(localtime(&buf.st_mtime)));
+
+            if (de->d_type == DT_REG){ //일반 파일이면
+                fs=get_filesize(de->d_name); //파일 크기 바이트로 저장
+                add_comma(fs, strnum); //파일 크기에 콤마찍기
+                printf("%14s %s\n", strnum, de->d_name);
+                filecnt++; //파일 개수 증가
+                filesum+=fs; 
+            }
+
+            else if (de->d_type == DT_DIR){//폴더면  dir출력함
+                printf("<DIR>\t\t %s\n", de->d_name);
+                dircnt++;
+            }
+        }
+    }while ((de = readdir(dp)) != NULL);
+
+    GetDiskFreeSpaceEx(pathname, NULL, NULL, &free_memory); //디스크 용량 정보 받기
+    add_comma(filesum, strnum);
+    printf("\t%8d개 파일\t%19s 바이트\n", filecnt, strnum);
+    add_comma((LONGLONG)free_memory.QuadPart, strnum);
+    printf("\t%8d개 디렉터리 %16s 바이트 남음\n", dircnt, strnum);
+    closedir(dp);
+}
+
+int charcmp(char c1, char c2) {
+    if (c1 >= 65 || c1 <= 90 || c2 >= 65 || c2 <= 90) { //문자일때 구분
+        if (c1 == c2 || c1 - c2 == 32 || c2 - c1 == 32) {
+            return 1;
+        }
+    }
+    if (c1 == c2) return 1;
+    return 0;
+}
+
+int is_last_str(char str1[], char str2[]){
+    int start_index=strlen(str1)-strlen(str2);
+    int i;
+    for(i=0; i<strlen(str2); i++){
+        if(str1[start_index+i]!=str2[i]) return 0;
+    }
+    return 1;
+}
+
+int is_same_wildcard_str(char argv[], char str[]) {
+    int argv_index = 0, str_index = 0;
+    int test = 0;
+    
+    if(strstr(str, ".") && strstr(str, ".\0")) return 0;//.이 있고 .으로 끝나지 않으면 0 리턴
+    while (argv[argv_index] != '.' && str[str_index] != '\0') {
+
+        if (argv[argv_index] == '*') {
+            argv_index++;
+            if(argv[argv_index] == '.') return 1;//*이 마지막 글자면 return 1;
+            while (!charcmp(argv[argv_index], str[str_index])) { //와일드카드 다음 문자와 같은 글자를 찾을때까지
+                if(str[str_index]=='\0') break;//str 끝까지 가버리면 멈추기
+                str_index++; // 와일드카드 문자 다음 글자가 나올때까지 str인덱스 뒤로 넘기기
+            }
+        }
+
+        if (!charcmp(argv[argv_index], str[str_index])) {
+            return 0;//만약 argv글자랑 str글자랑 같지 않다면 0 리턴
+        }
+
+        argv_index++; str_index++;
+    }
+
+    if(argv_index=='.' && str_index=='\0'){//while문이 정상적으로 끝났나?
+        return 1;
+    }else{
+        return 0;
+    }
+}
+
 
 int is_file_or_dir(char *filename){ //파일인지 디렉인지 판단
     struct _finddatai64_t c_file;
