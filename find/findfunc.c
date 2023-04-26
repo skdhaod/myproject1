@@ -88,6 +88,7 @@ void find_target(int argc, char* argv[]){
     __int64 filesum=0;//파일 크기 합계
     __int64 fs;//filesize
     char *dirname;
+    char* add_period;
     int i=1;//argv 인덱스, 초기값=1
 
     dp=opendir(".");
@@ -98,16 +99,13 @@ void find_target(int argc, char* argv[]){
     int type=is_file_or_dir(target);
 
     if(is_last_str(argv[1],".") && argc==2){ //특수한 경우 걸러내기
-        printf("확장자x출력\n");
         find_none_extension(argv); //.으로 끝나면 확장자가 없는 파일을 탐색해야함
         return;
     }else if(type==DR && argc==2){
-        printf("하위출력\n");
         find_target_dir(argv);//폴더 하나만 검색했다면 하위폴더 탐색으로 넘어가기
         return;
     }
 
-    printf("일반출력\n");
      
 
     printf("\n %s 디렉터리\n\n", getcwd(pathname, 100)); //현위치 출력
@@ -304,7 +302,6 @@ int is_same_wildcard_str(char argv[], char str[], unsigned int type) {
         return 0;
     }
 }
-
 
 int is_file_or_dir(char *filename){ //파일인지 디렉인지 판단
     struct _finddatai64_t c_file;

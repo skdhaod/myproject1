@@ -53,4 +53,4 @@ int is_last_str(char str1[], char str2[]);//str2가 str1의 마지막 문자열이 맞는가
 int is_file_or_dir(char *filename); //dir인지 file인지 구분
 char* get_time(struct tm *t); //시간 받아오기
 __int64 get_filesize(char *filename); //파일 크기 측정
-void add_comma(__int64 num, char *strnum); //콤마찍기
+void add_comma(__int64 num, char *strnum); //숫자 사이에 콤마찍기
