@@ -33,6 +33,7 @@
 */
 
 enum wildcard_loca{NONE=0, EXIST_FN, EXIST_EX, EXIST_BOTH};
+enum FILE_OR_DIR{DR=0, FL, OTHER};
 
 void volume_info();//º¼·ý Á¤º¸
 

@@ -12,7 +12,7 @@
     2. 폴더명 가장 뒤에 .을 추가하면 될까?
         argv에 폴더도 들어가져야 한다.
 
-    공통점 : 와일드카드가 dir과 똑같이 취급이 되지 않는듯
+    공통점 : 쉘 와일드카드가 dir과 똑같이 취급이 되지 않는듯
 */
 
 void volume_info(){
@@ -89,17 +89,25 @@ void find_target(int argc, char* argv[]){
     __int64 fs;//filesize
     char *dirname;
     int i=1;//argv 인덱스, 초기값=1
-    
+
     dp=opendir(".");
     de = readdir(dp);
+    
+    //하위폴더인지 비교용
+    sprintf(target, ".\\%s", argv[1]);
+    int type=is_file_or_dir(target);
 
-    if(is_last_str(argv[1],".") && strcmp(argv[1], ".")){ //특수한 경우 걸러내기
+    if(is_last_str(argv[1],".") && argc==2){ //특수한 경우 걸러내기
+        printf("확장자x출력\n");
         find_none_extension(argv); //.으로 끝나면 확장자가 없는 파일을 탐색해야함
         return;
-    }else if(de->d_type == DT_DIR && argc==2){
+    }else if(type==DR && argc==2){
+        printf("하위출력\n");
         find_target_dir(argv);//폴더 하나만 검색했다면 하위폴더 탐색으로 넘어가기
         return;
     }
+
+    printf("일반출력\n");
      
 
     printf("\n %s 디렉터리\n\n", getcwd(pathname, 100)); //현위치 출력
@@ -304,11 +312,11 @@ int is_file_or_dir(char *filename){ //파일인지 디렉인지 판단
 
                     //3기가 이상의 파일을 다루는 함수, 파일을 검색한다.
     if ( (hFile = _findfirsti64(filename, &c_file)) == -1 )
-        result = -1; // 파일 또는 디렉토리가 없으면 -1 반환
+        result = OTHER; // 파일 또는 디렉토리가 없으면 -1 반환
     else if (c_file.attrib & _A_SUBDIR) // c_file.attrib : 파일의 특성을 나타냄
-        result = 0; // 디렉토리면 0 반환
+        result = DR; // 디렉토리면 0 반환
     else
-        result = 1; // 그밖의 경우는 "존재하는 파일"이기에 1 반환
+        result = FL; // 그밖의 경우는 "존재하는 파일"이기에 1 반환
 
     _findclose(hFile);
     return result;
