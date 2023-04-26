@@ -44,7 +44,7 @@ void find_target_file(char *argv[]);//file find
 
 void find_none_extension(char *argv[]);
 
-int is_same_wildcard_str(char argv[], char str[]);//와일드카드 포함 문자열이 일치하는가?
+int is_same_wildcard_str(char argv[], char str[], unsigned int type);//와일드카드 포함 문자열이 일치하는가?
 int charcmp(char argv, char str);//문자가 일치하는가?
 int is_last_str(char str1[], char str2[]);//str2가 str1의 마지막 문자열이 맞는가?
 

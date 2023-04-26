@@ -48,8 +48,9 @@ int is_same_wildcard_str(char argv[], char str[]) {
 
 
 int main() {
-    char argv[] = "f*e.";
-    char str[] = "find.exe";
+    char argv[] = "*.";
+    char str[] = "..";
+    printf("%d\n", sizeof(str));
     if (is_same_wildcard_str(argv, str))
         printf("same\n");
     else printf("diff\n");

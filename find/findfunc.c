@@ -1,15 +1,18 @@
-
 #include "findfunc.h"
 
 /*
 해결해야할것
-    * 했을때 . .. .vscode 나와야함.. *입력하면 argv에 안들어가짐 find폴더부터 들어감
 
-    *.*했을때 디렉터리도 나와야함(파일만 나옴)
+    * 했을때 숨김파일 나와야함
 
-    *.했을때 확장자가 없는 파일들 나와야함 //함수 만들면 됨. 이유 : argv에 *.이게 그대로 들어가버림 <-만드는중
+    *.*했을때 디렉터리도 나와야함
 
-    문제: .이 제일 뒤에 있으면 그냥 확장자가 없다는 뜻인데 뭔 말인지 못알아먹는듯 argv를 어떻게 고쳐야하나?
+    1. ㅁㄻㄻㄻㄹㄹ
+    
+    2. 폴더명 가장 뒤에 .을 추가하면 될까?
+        argv에 폴더도 들어가져야 한다.
+
+    공통점 : 와일드카드가 dir과 똑같이 취급이 되지 않는듯
 */
 
 void volume_info(){
@@ -90,21 +93,21 @@ void find_target(int argc, char* argv[]){
     dp=opendir(".");
     de = readdir(dp);
 
-    if(de->d_type == DT_DIR && argc==2){ //특수한 경우 걸러내기
+    if(is_last_str(argv[1],".") && strcmp(argv[1], ".")){ //특수한 경우 걸러내기
+        find_none_extension(argv); //.으로 끝나면 확장자가 없는 파일을 탐색해야함
+        return;
+    }else if(de->d_type == DT_DIR && argc==2){
         find_target_dir(argv);//폴더 하나만 검색했다면 하위폴더 탐색으로 넘어가기
         return;
     }
-    else if(is_last_str(argv[1],".")){
-        find_none_extension(argv); //.으로 끝나면 확장자가 없는 파일을 탐색해야함
-        return;
-    }
+     
 
     printf("\n %s 디렉터리\n\n", getcwd(pathname, 100)); //현위치 출력
 
 
     while (argv[i]!=NULL){
         _stat(de->d_name, &buf);
-        if (!strcmp(argv[i], de->d_name)){
+        if (!strcmp(argv[i], de->d_name)){ //만약 argv와 dname이 같다면 출력
             printf("%s", get_time(localtime(&buf.st_mtime)));
             if (de->d_type == DT_REG){//파일일때
                 fs=get_filesize(de->d_name);
@@ -182,6 +185,10 @@ void find_target_dir(char *argv[]){ //하위 디렉 탐색
             
     }while ((de = readdir(dp)) != NULL);
 
+    if(!filecnt && !dircnt){
+        printf("파일을 찾을 수 없습니다.\n");
+        return;
+    }
     add_comma(filesum, strnum);
     printf("\t%8d개 파일\t%19s 바이트\n", filecnt, strnum);
     add_comma((LONGLONG)free_memory.QuadPart, strnum);
@@ -205,13 +212,12 @@ void find_none_extension(char *argv[]){//확장자가 없는(*. 로 끝나는) 파일 탐색
     dp=opendir(".");
     de=readdir(dp);
 
-
     printf("\n %s 디렉터리\n\n", getcwd(pathname, 100));
 
 
     do{
         _stat(de->d_name, &buf);
-        if(is_same_wildcard_str(argv[1], de->d_name)){
+        if(is_same_wildcard_str(argv[1], de->d_name, de->d_type)){
             printf("%s", get_time(localtime(&buf.st_mtime)));
 
             if (de->d_type == DT_REG){ //일반 파일이면
@@ -229,6 +235,10 @@ void find_none_extension(char *argv[]){//확장자가 없는(*. 로 끝나는) 파일 탐색
         }
     }while ((de = readdir(dp)) != NULL);
 
+    if(!filecnt && !dircnt){
+        printf("파일을 찾을 수 없습니다.\n");
+        return;
+    }
     GetDiskFreeSpaceEx(pathname, NULL, NULL, &free_memory); //디스크 용량 정보 받기
     add_comma(filesum, strnum);
     printf("\t%8d개 파일\t%19s 바이트\n", filecnt, strnum);
@@ -256,11 +266,12 @@ int is_last_str(char str1[], char str2[]){
     return 1;
 }
 
-int is_same_wildcard_str(char argv[], char str[]) {
+int is_same_wildcard_str(char argv[], char str[], unsigned int type) {
     int argv_index = 0, str_index = 0;
     int test = 0;
     
-    if(strstr(str, ".") && strstr(str, ".\0")) return 0;//.이 있고 .으로 끝나지 않으면 0 리턴
+    if(type==DT_DIR) return 1;//폴더는 확장자가 없으니까 그냥 1 리턴
+    if(strstr(str, ".") && !is_last_str(str, ".")) return 0;//.이 있고 .으로 끝나지 않으면 0 리턴
     while (argv[argv_index] != '.' && str[str_index] != '\0') {
 
         if (argv[argv_index] == '*') {
@@ -318,6 +329,7 @@ char* get_time(struct tm *t){
     return date;
 
 }
+
 __int64 get_filesize(char *filename){
     struct _stati64 buf;
 
