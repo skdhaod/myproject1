@@ -32,16 +32,16 @@
 #endif
 */
 
-enum wildcard_loca{NONE=0, EXIST_FN, EXIST_EX, EXIST_BOTH};
-enum FILE_OR_DIR{DR=0, FL, OTHER};
+enum FILE_OR_DIR{DR=0, FL, OTHER}; //디렉토리, 파일, 그 외 구분
 
 void volume_info();//볼륨 정보
 
 void find_cur();//현재 디렉토리 find
 
 void find_target(int argc, char *argv[]);//타겟 find
-void find_target_dir(char *argv[]);//dir find
-void find_target_file(char *argv[]);//file find
+void find_default(char *argv[]);//기본 find
+void find_sub_dir(char *argv[]);//하위 dir find
+void find_qmark(char *argv[]);//?만 입력됐을때 출력
 
 void find_none_extension(char *argv[]);
 

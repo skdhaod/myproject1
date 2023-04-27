@@ -13,7 +13,9 @@
         argv에 폴더도 들어가져야 한다.
 
     공통점 : 쉘 와일드카드가 dir과 똑같이 취급이 되지 않는듯
+            쉘의 와일드카드 : *에 공백 포함, 여기서는 공백 미포함
 */
+
 
 void volume_info(){
     char volumeName[MAX_PATH + 1] = { 0 };
@@ -27,7 +29,6 @@ void volume_info(){
         printf(" C 드라이브의 볼륨: %s\n", volumeName);
     printf(" 볼륨 일련 번호 : %04X-%04X\n", HIWORD(serialNumber), LOWORD(serialNumber)); // (serialNumber >> 16) & 0xffff, serialNumber & 0xffff로도 쓸 수 있음
 }
-
 
 void find_cur(){
     struct dirent *de;
@@ -75,10 +76,29 @@ void find_cur(){
 }
 
 void find_target(int argc, char* argv[]){
+    char target[MAX_PATH];//타겟 이름
+
+    //하위폴더인지 비교용
+    sprintf(target, ".\\%s", argv[1]);
+    int type=is_file_or_dir(target);
+
+    if(is_last_str(argv[1],".") && argc==2){ //특수한 경우 걸러내기
+        find_none_extension(argv); //.으로 끝나면 확장자가 없는 파일을 탐색해야함
+        return;
+    }else if(!strcmp(argv[1], "?")){
+        find_qmark(argv);
+        return;
+    }else if(type==DR && argc==2){
+        find_sub_dir(argv);//폴더 하나만 검색했다면 하위폴더 탐색으로 넘어가기
+        return;
+    }
+    else find_default(argv);
+}
+
+void find_default(char *argv[]){
     struct dirent *de;
     DIR *dp;
     char pathname[100]; //경로 이름
-    char target[120];//타겟 이름
     char strnum[20];//숫자를 문자열로 저장할때 쓸 배열
     ULARGE_INTEGER free_memory;//엄청 큰 크기 측정하려고 있는 구조체
     memset(&free_memory, 0, sizeof(free_memory));//메모리 0으로 초기화
@@ -88,25 +108,10 @@ void find_target(int argc, char* argv[]){
     __int64 filesum=0;//파일 크기 합계
     __int64 fs;//filesize
     char *dirname;
-    char* add_period;
     int i=1;//argv 인덱스, 초기값=1
 
     dp=opendir(".");
     de = readdir(dp);
-    
-    //하위폴더인지 비교용
-    sprintf(target, ".\\%s", argv[1]);
-    int type=is_file_or_dir(target);
-
-    if(is_last_str(argv[1],".") && argc==2){ //특수한 경우 걸러내기
-        find_none_extension(argv); //.으로 끝나면 확장자가 없는 파일을 탐색해야함
-        return;
-    }else if(type==DR && argc==2){
-        find_target_dir(argv);//폴더 하나만 검색했다면 하위폴더 탐색으로 넘어가기
-        return;
-    }
-
-     
 
     printf("\n %s 디렉터리\n\n", getcwd(pathname, 100)); //현위치 출력
 
@@ -147,7 +152,7 @@ void find_target(int argc, char* argv[]){
     closedir(dp);
 }
 
-void find_target_dir(char *argv[]){ //하위 디렉 탐색
+void find_sub_dir(char *argv[]){ //하위 디렉 탐색
 
     ULARGE_INTEGER free_memory;//엄청 큰 크기 측정하려고 있는 구조체
     memset(&free_memory, 0, sizeof(free_memory));//메모리 0으로 초기화
@@ -202,6 +207,62 @@ void find_target_dir(char *argv[]){ //하위 디렉 탐색
     closedir(dp);
 }
 
+void find_qmark(char *argv[]){
+    struct dirent *de;
+    DIR *dp;
+    char pathname[100]; //경로 이름
+    char strnum[20];//숫자를 문자열로 저장할때 쓸 배열
+    ULARGE_INTEGER free_memory;//엄청 큰 크기 측정하려고 있는 구조체
+    memset(&free_memory, 0, sizeof(free_memory));//메모리 0으로 초기화
+    struct _stat buf;//현재 파일 정보 받아오는 구조체
+    int filecnt=0;//파일 개수
+    int dircnt=0;//폴더 개수
+    __int64 filesum=0;//파일 크기 합계
+    __int64 fs;//filesize
+    char *dirname;
+    int i=1;//argv 인덱스, 초기값=1
+    
+    dp=opendir(".");
+    de = readdir(dp);
+
+    printf("\n %s 디렉터리\n\n", getcwd(pathname, 100)); //현위치 출력
+
+
+    while (i<3){ //.과 ..만 출력되면 됨
+        _stat(de->d_name, &buf);
+        printf("%s", get_time(localtime(&buf.st_mtime)));
+        if (de->d_type == DT_REG){//파일일때
+            fs=get_filesize(de->d_name);
+            add_comma(fs, strnum);
+            printf("%14s %s\n", strnum, de->d_name);
+            filecnt++;
+            filesum+=fs;
+        }
+
+        else if (de->d_type == DT_DIR){//폴더일때
+            printf("<DIR>\t\t %s\n", de->d_name);
+            dircnt++;
+        }
+        i++;
+        de = readdir(dp);
+    }
+        
+
+    if(!filecnt && !dircnt){
+        printf("파일을 찾을 수 없습니다.\n");
+        return;
+    }
+
+    GetDiskFreeSpaceEx(pathname, NULL, NULL, &free_memory); //디스크 용량 정보 받기
+    add_comma(filesum, strnum);
+    printf("\t%8d개 파일\t%19s 바이트\n", filecnt, strnum);
+    add_comma((LONGLONG)free_memory.QuadPart, strnum);
+    printf("\t%8d개 디렉터리 %16s 바이트 남음\n", dircnt, strnum);
+
+    closedir(dp);
+    
+}
+
 void find_none_extension(char *argv[]){//확장자가 없는(*. 로 끝나는) 파일 탐색
     struct dirent *de;
     DIR *dp;
@@ -252,6 +313,8 @@ void find_none_extension(char *argv[]){//확장자가 없는(*. 로 끝나는) 파일 탐색
     printf("\t%8d개 디렉터리 %16s 바이트 남음\n", dircnt, strnum);
     closedir(dp);
 }
+
+
 
 int charcmp(char c1, char c2) {
     if (c1 >= 65 || c1 <= 90 || c2 >= 65 || c2 <= 90) { //문자일때 구분
