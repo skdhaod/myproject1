@@ -6,7 +6,7 @@
 */
 
 
-void volume_info(){
+void volume_info(){ //볼륨 정보 출력
     char volumeName[MAX_PATH + 1] = { 0 };
     DWORD serialNumber = 0;
     int i;
@@ -19,7 +19,7 @@ void volume_info(){
     printf(" 볼륨 일련 번호 : %04X-%04X\n", HIWORD(serialNumber), LOWORD(serialNumber)); // (serialNumber >> 16) & 0xffff, serialNumber & 0xffff로도 쓸 수 있음
 }
 
-void find_cur(){
+void find_cur(){ //현재 경로 모든 파일 출력
     struct dirent *de;
     DIR *dp;
     ULARGE_INTEGER free_memory;//엄청 큰 크기 측정하려고 있는 구조체
@@ -64,7 +64,7 @@ void find_cur(){
     closedir(dp);
 }
 
-void find_target(int argc, char* argv[]){
+void find_target(int argc, char* argv[]){ //타겟 구분
     char target[MAX_PATH];//타겟 이름
 
     //하위폴더인지 비교용
@@ -74,10 +74,10 @@ void find_target(int argc, char* argv[]){
     if(is_last_str(argv[1],".") && argc==2){ //특수한 경우 걸러내기
         find_none_extension(argv); //.으로 끝나면 확장자가 없는 파일을 탐색해야함
         return;
-    }else if(!strcmp(argv[1], "?")){
+    }else if(!strcmp(argv[1], "?")){ //물음표만 입력
         find_qmark(argv);
         return;
-    }else if(!strcmp(argv[1], "-s")){
+    }else if(!strcmp(argv[1], "-s")){ //옵션 입력
         find_option_s(argc, argv);
         return;
     }
@@ -88,7 +88,7 @@ void find_target(int argc, char* argv[]){
     else find_default(argv);
 }
 
-void find_default(char *argv[]){
+void find_default(char *argv[]){//기본 출력
     struct dirent *de;
     DIR *dp;
     char pathname[100]; //경로 이름
@@ -108,9 +108,9 @@ void find_default(char *argv[]){
     printf("\n %s 디렉터리\n\n", getcwd(pathname, 100)); //현위치 출력
 
 
-    while (argv[i]!=NULL){
+    while (argv[i]!=NULL && de!=NULL){
         _stat(de->d_name, &buf);
-        if (!strcmp(argv[i], de->d_name)){ //만약 argv와 dname이 같다면 출력
+        if (!strcmpi(argv[i], de->d_name)){ //만약 argv와 dname이 같다면 출력
             printf("%s", get_time(localtime(&buf.st_mtime)));
             if (de->d_type == DT_REG){//파일일때
                 fs=get_filesize(de->d_name);
@@ -215,7 +215,7 @@ __int64 find_in_sub_dir(int argc, char *dir_path, int *argc_filecnt, int *argc_d
     char *dirname;
     char strnum[20];
     char target[120];
-    int i, j=2;
+    int i;
     
     sprintf(target, ".\\%s", dir_path); //폴더를 경로로 추가
     dp=opendir(target);
@@ -248,8 +248,8 @@ __int64 find_in_sub_dir(int argc, char *dir_path, int *argc_filecnt, int *argc_d
     
     closedir(dp);
     if(filecnt||dircnt){
-                add_comma(filesum, strnum);
-                printf("\t%8d개 파일\t%19s 바이트\n", filecnt, strnum);
+        add_comma(filesum, strnum);
+        printf("\t%8d개 파일\t%19s 바이트\n", filecnt, strnum);
     }
     *argc_dircnt+=dircnt;
     *argc_filecnt+=filecnt;
@@ -363,7 +363,7 @@ void find_none_extension(char *argv[]){//확장자가 없는(*. 로 끝나는) 파일 탐색
     closedir(dp);
 }
 
-void find_option_s(int argc, char *argv[]){
+void find_option_s(int argc, char *argv[]){ //옵션 -s가 있을때
     struct dirent *de;
     DIR *dp;
     char pathname[100]; //경로 이름
@@ -380,7 +380,6 @@ void find_option_s(int argc, char *argv[]){
 
     dp=opendir(".");
     de = readdir(dp);
-    GetDiskFreeSpaceEx(pathname, NULL, NULL, &free_memory); //디스크 용량 정보 받기
 
     if(argc>2){
         filesum=0;
@@ -392,13 +391,8 @@ void find_option_s(int argc, char *argv[]){
             if(de->d_type ==DT_DIR) //폴더면 내부 디렉터리 탐색
                 filesum += find_in_sub_dir(argc, de->d_name, &filecnt, &dircnt, argv);
 
-            file_total+=filesum;
-            
             de=readdir(dp);
         }while (de!=NULL);
-
-            
-
     }else{
         do{
             _stat(de->d_name, &buf);
@@ -413,8 +407,10 @@ void find_option_s(int argc, char *argv[]){
             return;
     }
 
+    GetDiskFreeSpaceEx(NULL, NULL, NULL, &free_memory); //디스크 용량 정보 받기
+
     printf("\n     전체 파일:\n");
-    add_comma(file_total, strnum);
+    add_comma(filesum, strnum);
     printf("\t%8d개 파일\t%19s 바이트\n", filecnt, strnum);
     add_comma((LONGLONG)free_memory.QuadPart, strnum);
     printf("\t%8d개 디렉터리 %16s 바이트 남음\n", dircnt, strnum);
@@ -422,6 +418,7 @@ void find_option_s(int argc, char *argv[]){
 }
 
 
+//보조 함수들
 int charcmp(char c1, char c2) {
     if (c1 >= 65 || c1 <= 90 || c2 >= 65 || c2 <= 90) { //문자일때 구분
         if (c1 == c2 || c1 - c2 == 32 || c2 - c1 == 32) {
