@@ -1,10 +1,5 @@
 #include "findfunc.h"
 
-/*
-해결해야할것
-    서브 디렉터리 탐색
-*/
-
 
 void volume_info(){ //볼륨 정보 출력
     char volumeName[MAX_PATH + 1] = { 0 };
