@@ -2,18 +2,7 @@
 
 /*
 해결해야할것
-
-    * 했을때 숨김파일 나와야함
-
-    *.*했을때 디렉터리도 나와야함
-
-    1. ㅁㄻㄻㄻㄹㄹ
-    
-    2. 폴더명 가장 뒤에 .을 추가하면 될까?
-        argv에 폴더도 들어가져야 한다.
-
-    공통점 : 쉘 와일드카드가 dir과 똑같이 취급이 되지 않는듯
-            쉘의 와일드카드 : *에 공백 포함, 여기서는 공백 미포함
+    서브 디렉터리 탐색
 */
 
 
@@ -88,8 +77,12 @@ void find_target(int argc, char* argv[]){
     }else if(!strcmp(argv[1], "?")){
         find_qmark(argv);
         return;
-    }else if(type==DR && argc==2){
-        find_sub_dir(argv);//폴더 하나만 검색했다면 하위폴더 탐색으로 넘어가기
+    }else if(!strcmp(argv[1], "-s")){
+        find_option_s(argc, argv);
+        return;
+    }
+    else if(type==DR && argc==2){
+        find_sub_dir(argv[1], 0, 0);//폴더 하나만 검색했다면 하위폴더 탐색으로 넘어가기
         return;
     }
     else find_default(argv);
@@ -107,7 +100,6 @@ void find_default(char *argv[]){
     int dircnt=0;//폴더 개수
     __int64 filesum=0;//파일 크기 합계
     __int64 fs;//filesize
-    char *dirname;
     int i=1;//argv 인덱스, 초기값=1
 
     dp=opendir(".");
@@ -152,8 +144,7 @@ void find_default(char *argv[]){
     closedir(dp);
 }
 
-void find_sub_dir(char *argv[]){ //하위 디렉 탐색
-
+__int64 find_sub_dir(char *argv, int *argc_file, int *argc_dircnt){ //하위 디렉 탐색
     ULARGE_INTEGER free_memory;//엄청 큰 크기 측정하려고 있는 구조체
     memset(&free_memory, 0, sizeof(free_memory));//메모리 0으로 초기화
     struct dirent *de;
@@ -169,15 +160,15 @@ void find_sub_dir(char *argv[]){ //하위 디렉 탐색
     char strnum[20];
     char target[120];
     
-    sprintf(target, ".\\%s", argv[1]);
+    sprintf(target, ".\\%s", argv);
     dp=opendir(target);
     de=readdir(dp);
 
-    printf("\n %s\\%s 디렉터리\n\n", getcwd(pathname, 100), argv[1]);//폴더면 경로에 추가해서 출력
+    printf("\n %s\\%s 디렉터리\n\n", getcwd(pathname, 100), argv);//폴더면 경로에 추가해서 출력
     GetDiskFreeSpaceEx(pathname, NULL, NULL, &free_memory); //디스크 용량 정보 받기
 
     do{
-        sprintf(acs, ".\\%s\\%s", argv[1], de->d_name);
+        sprintf(acs, ".\\%s\\%s", argv, de->d_name);
         _stat(acs, &buf);
         printf("%s", get_time(localtime(&buf.st_mtime)));
 
@@ -198,16 +189,74 @@ void find_sub_dir(char *argv[]){ //하위 디렉 탐색
 
     if(!filecnt && !dircnt){
         printf("파일을 찾을 수 없습니다.\n");
-        return;
+        return -1;
     }
     add_comma(filesum, strnum);
     printf("\t%8d개 파일\t%19s 바이트\n", filecnt, strnum);
     add_comma((LONGLONG)free_memory.QuadPart, strnum);
     printf("\t%8d개 디렉터리 %16s 바이트 남음\n", dircnt, strnum);
     closedir(dp);
+
+    *argc_dircnt+=dircnt;
+    *argc_file+=filecnt;
+    return filesum;
 }
 
-void find_qmark(char *argv[]){
+__int64 find_in_sub_dir(int argc, char *dir_path, int *argc_filecnt, int *argc_dircnt, char* file_to_find[]){ //하위 디렉 안쪽의 파일 탐색
+    struct dirent *de;
+    DIR *dp;
+    char pathname[100]; //경로 이름
+    struct _stat buf;//현재 파일 정보 받아오는 구조체
+    char acs[100];//액세스할 위치
+    int filecnt=0;//파일 개수
+    int dircnt=0;//폴더 개수
+    __int64 filesum=0;//파일 크기 합계
+    __int64 fs;//filesize
+    char *dirname;
+    char strnum[20];
+    char target[120];
+    int i, j=2;
+    
+    sprintf(target, ".\\%s", dir_path); //폴더를 경로로 추가
+    dp=opendir(target);
+
+    for(i=2;i<argc; i++){
+        rewinddir(dp);
+        while((de=readdir(dp)) && file_to_find[i]){
+            sprintf(acs, "%s\\%s", target, de->d_name);
+            _stat(acs, &buf);
+            if(!strcmpi(de->d_name, file_to_find[i])){
+                if(!filecnt && !dircnt) //처음 찾아지면 이거 출력
+                    printf("\n %s\\%s 디렉터리\n\n", getcwd(pathname, 100), dir_path);//폴더면 경로에 추가해서 출력
+
+                printf("%s", get_time(localtime(&buf.st_mtime)));
+                if (de->d_type == DT_REG){
+                    fs=get_filesize(acs);
+                    add_comma(fs, strnum);
+                    printf("%14s %s\n", strnum, de->d_name);
+                    filecnt++;
+                    filesum+=fs;
+                }
+
+                else if (de->d_type == DT_DIR){//폴더면  dir출력함
+                    printf("<DIR>\t\t %s\n", de->d_name);
+                    dircnt++;
+                }
+            }
+        }
+    }
+    
+    closedir(dp);
+    if(filecnt||dircnt){
+                add_comma(filesum, strnum);
+                printf("\t%8d개 파일\t%19s 바이트\n", filecnt, strnum);
+    }
+    *argc_dircnt+=dircnt;
+    *argc_filecnt+=filecnt;
+    return filesum;
+}
+
+void find_qmark(char *argv[]){ //?만 입력됐을때
     struct dirent *de;
     DIR *dp;
     char pathname[100]; //경로 이름
@@ -314,6 +363,63 @@ void find_none_extension(char *argv[]){//확장자가 없는(*. 로 끝나는) 파일 탐색
     closedir(dp);
 }
 
+void find_option_s(int argc, char *argv[]){
+    struct dirent *de;
+    DIR *dp;
+    char pathname[100]; //경로 이름
+    char strnum[20];//숫자를 문자열로 저장할때 쓸 배열
+    ULARGE_INTEGER free_memory;//엄청 큰 크기 측정하려고 있는 구조체
+    memset(&free_memory, 0, sizeof(free_memory));//메모리 0으로 초기화
+    struct _stat buf;//현재 파일 정보 받아오는 구조체
+    int filecnt=0;//파일 개수
+    int dircnt=0;//폴더 개수
+    __int64 filesum=0;//파일 크기 합계
+    __int64 fs;//filesize
+
+    __int64 file_total=0;
+
+    dp=opendir(".");
+    de = readdir(dp);
+    GetDiskFreeSpaceEx(pathname, NULL, NULL, &free_memory); //디스크 용량 정보 받기
+
+    if(argc>2){
+        filesum=0;
+        do{
+            if(!strcmp(de->d_name, "..")){
+                de=readdir(dp);
+                continue;
+            }
+            if(de->d_type ==DT_DIR) //폴더면 내부 디렉터리 탐색
+                filesum += find_in_sub_dir(argc, de->d_name, &filecnt, &dircnt, argv);
+
+            file_total+=filesum;
+            
+            de=readdir(dp);
+        }while (de!=NULL);
+
+            
+
+    }else{
+        do{
+            _stat(de->d_name, &buf);
+            if (de->d_type == DT_DIR){//폴더일때
+                filesum += find_sub_dir(de->d_name, &filecnt, &dircnt);
+            }
+        }while ((de = readdir(dp))!=NULL);
+    }
+
+    if(!filecnt && !dircnt){
+            printf("파일을 찾을 수 없습니다.\n");
+            return;
+    }
+
+    printf("\n     전체 파일:\n");
+    add_comma(file_total, strnum);
+    printf("\t%8d개 파일\t%19s 바이트\n", filecnt, strnum);
+    add_comma((LONGLONG)free_memory.QuadPart, strnum);
+    printf("\t%8d개 디렉터리 %16s 바이트 남음\n", dircnt, strnum);
+    closedir(dp);
+}
 
 
 int charcmp(char c1, char c2) {
@@ -376,7 +482,7 @@ int is_file_or_dir(char *filename){ //파일인지 디렉인지 판단
     else if (c_file.attrib & _A_SUBDIR) // c_file.attrib : 파일의 특성을 나타냄
         result = DR; // 디렉토리면 0 반환
     else
-        result = FL; // 그밖의 경우는 "존재하는 파일"이기에 1 반환
+        result = FL; // 그밖의 경우는 존재하는 파일, 1 반환
 
     _findclose(hFile);
     return result;

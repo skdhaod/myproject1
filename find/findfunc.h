@@ -38,10 +38,12 @@ void volume_info();//볼륨 정보
 
 void find_cur();//현재 디렉토리 find
 
-void find_target(int argc, char *argv[]);//타겟 find
+void find_target(int argc, char *argv[]);//타겟 찾기
 void find_default(char *argv[]);//기본 find
-void find_sub_dir(char *argv[]);//하위 dir find
+__int64 find_sub_dir(char *argv, int *filecnt, int *dircnt);//하위 dir find
+__int64 find_in_sub_dir(int argc, char *argv, int *filecnt, int *dircnt, char* file_to_find[]);//하위 dir 안쪽 find
 void find_qmark(char *argv[]);//?만 입력됐을때 출력
+void find_option_s(int argc, char *argv[]);//find -s가 입력됐을때
 
 void find_none_extension(char *argv[]);
 
